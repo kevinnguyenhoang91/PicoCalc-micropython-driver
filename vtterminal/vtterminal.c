@@ -171,6 +171,7 @@ static void reverseIndex(int16_t v);
 static void identify(void);
 static void resetToInitialState(void);
 //static void cursorUp(int16_t v);
+static void earseNextChars(int16_t v);
 static void cursorDown(int16_t v);
 static void cursorPosition(uint8_t y, uint8_t x);
 static void refreshScreen(void);
@@ -529,6 +530,10 @@ static mp_obj_t vt_printChar(mp_obj_t value_obj) {
             v1 = (nVals == 0) ? 1 : vals[0];
             cursorBackward(v1);
             break;
+          case 'X':
+            v1 = (nVals == 0) ? 1 : vals[0];
+            earseNextChars(v1);
+            break;
           case 'H':
           // CUP (Cursor Position): 
           case 'f':
@@ -883,7 +888,16 @@ static void cursorUp(int16_t v) {
   }
 */  
   // CUD (Cursor Down): 
-
+static void earseNextChars(int16_t v){
+    if (v <= 0) return;
+    int16_t idx = YP * SC_W + XP;
+    int16_t n = SC_W - XP;
+    if (v > n) v = n;
+    memset(&screen[idx], 0x00, v);
+    memset(&attrib[idx], defaultAttr.value, v);
+    memset(&colors[idx], cColor.value, v);
+    sc_updateLine(YP);
+  }
 static void cursorDown(int16_t v) {
 
     if ((YP+v)>M_BOTTOM){
@@ -969,7 +983,7 @@ static void eraseInDisplay(uint8_t m) {
     if (m <= 2) {
       memset(&screen[idx], 0x00, n);
       memset(&attrib[idx], defaultAttr.value, n);
-      memset(&colors[idx], defaultColor.value, n);
+      memset(&colors[idx], cColor.value, n);
       for (uint8_t i = sl; i <= el; i++)
         sc_updateLine(i);
     }
@@ -1467,7 +1481,7 @@ static void drawTxt6x8(uint8_t *fb,uint8_t c,int x0,int y0, uint8_t color){
       if (0 <= y && y < SC_PIXEL_WIDTH) {
         x = x0;
         uint8_t line_data = *chr_data++; 
-        for (;x<x0+CH_W-1;x++){
+        for (;x<x0+CH_W;x++){
             if ((line_data&0x80)&&(0 <= x && x < SC_PIXEL_WIDTH)) { // only draw if pixel set
                 setpixel(fb,x, y,color);
             }
